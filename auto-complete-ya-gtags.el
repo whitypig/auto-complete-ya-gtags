@@ -25,6 +25,10 @@
 
 ;;; Code:
 
+(eval-when-compile
+  (require 'cl))
+(require 'auto-complete)
+
 ;; Variables
 (defvar ac-ya-gtags-current-dbpath nil
   "A pathname to the directory in which currently using GTAGS exists.
