@@ -41,7 +41,7 @@ This variable becomes buffer-local automatically.")
 (defvar ac-ya-gtags-candidate-limit 30
   "The limit number of candidates. nil means no limit.")
 
-(defvar ac-ya-gtags-global-not-found-message "global: GTAGS not found."
+(defconst ac-ya-gtags-global-not-found-message "global: GTAGS not found."
   "A message from global when GTAGS is not found.")
 
 ;; Face
@@ -56,41 +56,50 @@ This variable becomes buffer-local automatically.")
   :group 'auto-complete)
 
 ;; Functions
+(defun ac-ya-gtags-get-tagdir-name ()
+  (car (split-string (shell-command-to-string "global -p") "\n")))
+
 (defun ac-ya-gtags-reset ()
   "Reset `ac-ya-gtags-dbpath' to nil, which means that the
 currently using pathname will be updated.
 Use this command when you have created or updated GTAGS."
   (interactive)
-  (setq ac-ya-gtags-dbpath nil))
+  (setq ac-ya-gtags-dbpath (ac-ya-gtags-get-tagdir-name)))
 
 (defun ac-ya-gtags-require-update ()
-  "Return t if `ac-ya-gtags-completion-table' needs an update."
+  "Return t if `ac-ya-gtags-completion-table' needs an update.
+
+If `ac-ya-gtags-dbpath' is nil, we have to find out if GTAGS
+exits. If `ac-ya-gtags-dbpath' is equal to
+`ac-ya-gtags-global-not-found-message', we don't need to do
+completion using ac-source-ya-gtags because there is no
+GTAGS. And if `ac-ya-gtags-get-tagdir-name' points to some
+directory and it is not equal to `ac-ya-gtags-current-dbpath',
+this means we need to return t to notify that the completion
+table needs to be updated."
   (unless ac-ya-gtags-dbpath
-    (setq ac-ya-gtags-dbpath (car (split-string (shell-command-to-string "global -p") "\n"))))
+    (setq ac-ya-gtags-dbpath (ac-ya-gtags-get-tagdir-name)))
+  ;; invariant: ac-ya-gtags-dbpath is not nil.
   (cond
    ((string= ac-ya-gtags-dbpath ac-ya-gtags-global-not-found-message)
-    ;; We don't need to complete using ac-ya-gtags.
+    ;; GTAGS is not found, so we don't need to complete using ac-ya-gtags.
     (setq ac-ya-gtags-current-dbpath nil)
     (setq ac-ya-gtags-completion-table nil)
     nil)
    ((string= ac-ya-gtags-dbpath ac-ya-gtags-current-dbpath)
     ;; this buffer's GTAGS and the current GTAGS is the same,
+    ;; and the completion table must have already been created,
     ;; so do nothing.
     nil)
    ((not (string= ac-ya-gtags-dbpath ac-ya-gtags-current-dbpath))
     ;; This is a new GTAGS
     (setq ac-ya-gtags-current-dbpath ac-ya-gtags-dbpath)
     t)
-   (t nil)))
+   (t (error "This can't happen in ac-ya-gtags-require-update")
+      nil)))
 
 (defun ac-ya-gtags-init ()
-  "Check and update completeion table.
-
-If GTAGS is not found in the curernt directory hierarchy, then we
-set both `ac-ya-gtags-dbpath' and `ac-ya-gtags-completion-table'
-to nil. If it's found and it's the new one, we need to create a
-new completion table. If it is the same one as previous, we do
-nothing."
+  "Check and update completeion table if need be."
   (when (ac-ya-gtags-require-update)
     ;; We have to create a new completion table.
     (setq ac-ya-gtags-completion-table
@@ -98,7 +107,8 @@ nothing."
 
 (defun ac-ya-gtags-candidate ()
   (ac-ya-gtags-init)
-  (when ac-ya-gtags-dbpath
+  (when (and ac-ya-gtags-dbpath
+             (not (string= ac-ya-gtags-dbpath ac-ya-gtags-global-not-found-message)))
     (let* ((candidates (all-completions ac-target ac-ya-gtags-completion-table))
            (len (length candidates)))
       (when (and (numberp ac-ya-gtags-candidate-limit)
@@ -112,3 +122,6 @@ nothing."
     (selection-face . ac-ya-gtags-selection-face)
     (requires . 3)
     (symbol . "s")))
+
+(provide 'auto-complete-ya-gtags)
+;;; auto-complete-ya-gtags.el ends here
