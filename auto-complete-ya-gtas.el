@@ -41,6 +41,9 @@ This variable becomes buffer-local automatically.")
 (defvar ac-ya-gtags-candidate-limit 30
   "The limit number of candidates. nil means no limit.")
 
+(defvar ac-ya-gtags-global-not-found-message "global: GTAGS not found."
+  "A message from global when GTAGS is not found.")
+
 ;; Face
 (defface ac-ya-gtags-candidate-face
   '((t (:background "lightgray" :foreground "navy")))
@@ -56,7 +59,7 @@ This variable becomes buffer-local automatically.")
 (defun ac-ya-gtags-reset ()
   "Reset `ac-ya-gtags-dbpath' to nil, which means that the
 currently using pathname will be updated.
-Use this command when you create or update GTAGS."
+Use this command when you have created or updated GTAGS."
   (interactive)
   (setq ac-ya-gtags-dbpath nil))
 
@@ -65,7 +68,7 @@ Use this command when you create or update GTAGS."
   (unless ac-ya-gtags-dbpath
     (setq ac-ya-gtags-dbpath (car (split-string (shell-command-to-string "global -p") "\n"))))
   (cond
-   ((string= ac-ya-gtags-dbpath "global: GTAGS not found.")
+   ((string= ac-ya-gtags-dbpath ac-ya-gtags-global-not-found-message)
     ;; We don't need to complete using ac-ya-gtags.
     (setq ac-ya-gtags-current-dbpath nil)
     (setq ac-ya-gtags-completion-table nil)
